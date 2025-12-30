@@ -14,6 +14,10 @@ pqcrypto-dilithium = "0.5"
 
 # --- Homomorphic Encryption (The Magic) ---
 # 'integer' feature allows us to do math on encrypted numbers
+# Platform-specific features to avoid build failures on unsupported platforms
+tfhe = { version = "0.5", features = ["boolean", "integer"] }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
 tfhe = { version = "0.5", features = ["boolean", "integer", "x86_64-unix"] }
 
 # --- Symmetric Encryption (The Speed) ---

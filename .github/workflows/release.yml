@@ -27,7 +27,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev pkg-config cmake
+          sudo apt-get install -y build-essential libssl-dev pkg-config cmake clang
 
       - uses: dtolnay/rust-toolchain@stable
       
@@ -35,7 +35,7 @@ jobs:
         run: cargo install cargo-deb
 
       - name: Build & Package (.deb)
-        run: cargo deb -p aura-server --no-build # We let cargo deb handle the build
+        run: cargo deb -p aura-server
 
       # Rename for clarity (e.g., aura-server_0.1.0_amd64.deb -> aura-db-linux-amd64.deb)
       - name: Rename Artifact
@@ -48,54 +48,45 @@ jobs:
           path: target/debian/aura-db-linux-amd64.deb
 
   # -----------------------------------------------------------------
-  # JOB 2: WINDOWS (.msi Installer)
+  # JOB 2: WINDOWS (.msi Installer) - DISABLED
   # -----------------------------------------------------------------
-  package-windows:
-    name: Package Windows (MSI)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Dependencies
-        run: choco install cmake nasm strawberryperl
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-wix
-        run: cargo install cargo-wix
-
-      - name: Initialize WiX (If not already committed)
-        # Only needed if you haven't committed wix/main.wxs yet.
-        # If you have, this step can be skipped or will warn it exists.
-        run: cargo wix init || echo "WiX already initialized"
-        continue-on-error: true
-
-      - name: Build & Package (.msi)
-        # This builds Release and wraps it in MSI
-        run: cargo wix --nocapture -p aura-server 
-
-      - name: Rename Artifact
-        run: |
-          cd target/wix
-          Get-ChildItem *.msi | Rename-Item -NewName "aura-db-windows-x64.msi"
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-msi
-          path: target/wix/aura-db-windows-x64.msi
+  # Note: TFHE library doesn't support Windows builds yet
+  # package-windows:
+  #   name: Package Windows (MSI)
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Install Dependencies
+  #       run: choco install cmake nasm strawberryperl
+  #     - uses: dtolnay/rust-toolchain@stable
+  #     - name: Install cargo-wix
+  #       run: cargo install cargo-wix
+  #     - name: Initialize WiX (If not already committed)
+  #       run: cargo wix init || echo "WiX already initialized"
+  #       continue-on-error: true
+  #     - name: Build & Package (.msi)
+  #       run: cargo wix --nocapture -p aura-server
+  #     - name: Rename Artifact
+  #       run: |
+  #         cd target/wix
+  #         Get-ChildItem *.msi | Rename-Item -NewName "aura-db-windows-x64.msi"
+  #     - name: Upload Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: windows-msi
+  #         path: target/wix/aura-db-windows-x64.msi
 
   # -----------------------------------------------------------------
-  # JOB 3: MACOS (Tarball)
+  # JOB 2: MACOS (Tarball)
   # -----------------------------------------------------------------
   package-macos:
-    name: Package macOS (Apple Silicon)
+    name: Package macOS (Universal)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Dependencies
-        run: brew install openssl@3 cmake
+        run: brew install openssl@3 cmake llvm
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -109,7 +100,7 @@ jobs:
           cp target/release/aura aura-dist/bin/
           cp README.md aura-dist/
           # Create a nice tar.gz
-          tar -czf aura-db-macos-arm64.tar.gz -C aura-dist .
+          tar -czf aura-db-macos-universal.tar.gz -C aura-dist .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -118,11 +109,11 @@ jobs:
           path: aura-db-macos-arm64.tar.gz
 
   # -----------------------------------------------------------------
-  # JOB 4: PUBLISH TO GITHUB RELEASES
+  # JOB 3: PUBLISH TO GITHUB RELEASES
   # -----------------------------------------------------------------
   publish:
     name: Publish Release
-    needs: [package-linux, package-windows, package-macos]
+    needs: [package-linux, package-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -138,6 +129,5 @@ jobs:
         with:
           files: |
             artifacts/linux-deb/aura-db-linux-amd64.deb
-            artifacts/windows-msi/aura-db-windows-x64.msi
-            artifacts/macos-tar/aura-db-macos-arm64.tar.gz
+            artifacts/macos-tar/aura-db-macos-universal.tar.gz
           generate_release_notes: true
