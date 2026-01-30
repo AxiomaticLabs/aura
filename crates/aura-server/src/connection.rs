@@ -12,7 +12,7 @@ use tracing::{debug, info};
 // The Protocol States
 // TODO: Implement encrypted communication using session_key
 #[allow(dead_code)]
-enum ConnectionState {
+pub enum ConnectionState {
     Handshake,
     Authenticated { session_key: Vec<u8> },
 }
@@ -30,20 +30,23 @@ pub async fn handle_socket(mut socket: TcpStream, db: Arc<Mutex<Pager>>) -> Resu
                 // A. Server generates ephemeral Kyber Keypair
                 let server_keys = kem::PQCKeyPair::generate();
 
-                // B. Send Public Key to Client (1184 bytes)
-                socket.write_all(server_keys.pk.as_bytes()).await?;
+                // B. Send Public Key to Client (1568 bytes for Kyber1024)
+                let pk_bytes = server_keys.pk.as_bytes();
+                socket.write_all(pk_bytes).await?;
 
                 // C. Wait for Client's Encapsulated Secret
-                let n = socket.read(&mut buffer).await?;
+                // Kyber1024 Ciphertext is 1568 bytes
+                let mut ct_buffer = vec![0u8; 1568];
+                let n = socket.read(&mut ct_buffer).await?;
                 if n == 0 {
                     return Ok(());
                 } // Client disconnected
+                if n != 1568 {
+                    bail!("Expected 1568 bytes for ciphertext, got {}", n);
+                }
 
                 // D. Decapsulate to get Shared Secret
-                // In production, frame this properly. Kyber1024 Ciphertext is 1568 bytes.
-                let ciphertext = &buffer[0..n];
-
-                let shared_secret = match kem::decapsulate(ciphertext, &server_keys.sk) {
+                let shared_secret = match kem::decapsulate(&ct_buffer, &server_keys.sk) {
                     Ok(secret) => secret,
                     Err(_) => {
                         bail!("Handshake Failed: Invalid Kyber Ciphertext");

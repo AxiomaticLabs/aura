@@ -21,6 +21,10 @@ impl<'a> QueryEngine<'a> {
         let dialect = GenericDialect {};
         let ast = Parser::parse_sql(&dialect, sql)?;
 
+        if ast.is_empty() {
+            return Err(QueryError::Unimplemented("Empty SQL statement".to_string()));
+        }
+
         match &ast[0] {
             Statement::Insert {
                 columns, source, ..

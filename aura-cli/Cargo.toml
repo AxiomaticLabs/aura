@@ -1,6 +1,39 @@
 [package]
 name = "aura-cli"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["AuraDB Team <team@auradb.com>"]
+license = "MIT OR Apache-2.0"
+description = "Command-line client for AuraDB post-quantum secure database"
 
 [dependencies]
+# Internal
+aura-common = { path = "../crates/aura-common" }
+aura-security = { path = "../crates/aura-security" }
+
+# System
+tokio = { version = "1.36", features = ["full"] }
+clap = { version = "4.4", features = ["derive"] }
+rustyline = "13.0"  # For the Interactive SQL Shell (Up arrow history, editing)
+anyhow = "1.0"
+colored = "2.0"     # Hacker-style output colors
+
+# PQC
+pqcrypto-kyber = "0.8"
+pqcrypto-traits = "0.3"
+
+[package.metadata.deb]
+maintainer = "AuraDB Team <team@auradb.com>"
+copyright = "2026, AuraDB Inc."
+license-file = ["../LICENSE"]
+depends = "$auto"
+section = "database"
+priority = "optional"
+extended-description = "Command-line client for AuraDB post-quantum secure database"
+# Install binary to /usr/bin (fixes PATH automatically)
+assets = [
+    ["target/release/aura", "usr/bin/", "755"],
+]
+
+[package.metadata.wix]
+eula = false

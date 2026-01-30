@@ -1,0 +1,15 @@
+[Unit]
+Description=AuraDB Unbreakable Database Server
+After=network.target
+
+[Service]
+Type=simple
+User=aura
+ExecStart=/usr/bin/aura-server
+Restart=on-failure
+# Security Hardening
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

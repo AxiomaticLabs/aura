@@ -73,3 +73,61 @@ jobs:
 
       - name: Build Release
         run: cargo build --release --workspace
+
+  # ----------------------------------------------------------------
+  # JOB 4: PACKAGE (Linux, Windows, macOS)
+  # ----------------------------------------------------------------
+  package:
+    name: 📦 Package (${{ matrix.os }})
+    needs: release-build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            targets: ["deb-server", "deb-cli"]
+            cmd: |
+              cargo install cargo-deb
+              cargo deb -p aura-server
+              cargo deb -p aura-cli
+            artifact-path: target/debian/*.deb
+            artifact-name: linux-packages
+          - os: windows-latest
+            targets: ["msi-server", "msi-cli"]
+            cmd: |
+              cargo install cargo-wix
+              cargo wix -p aura-server
+              cargo wix -p aura-cli
+            artifact-path: |
+              crates/aura-server/target/wix/*.msi
+              aura-cli/target/wix/*.msi
+            artifact-name: windows-packages
+          # macOS packaging requires code signing, so we skip automated builds
+          # but provide the build script for manual use
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install System Dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev pkg-config cmake
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: Build Release Binaries
+        run: cargo build --release --workspace
+
+      - name: Build Packages
+        run: ${{ matrix.cmd }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}

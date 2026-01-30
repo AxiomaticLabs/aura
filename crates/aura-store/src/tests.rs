@@ -115,3 +115,78 @@ fn test_different_keys_produce_different_ciphertext() {
     assert!(!encrypted_data1.windows(4).any(|w| w == b"test"));
     assert!(!encrypted_data2.windows(4).any(|w| w == b"test"));
 }
+
+#[test]
+fn test_btree_basic_operations() {
+    // Create a temporary file for testing
+    let temp_file = NamedTempFile::new().unwrap();
+    let db_path = temp_file.path();
+
+    // Generate a master key
+    let master_key = generate_key();
+
+    // Create pager
+    let mut pager = Pager::open(db_path, master_key).unwrap();
+
+    // Create a root node (leaf)
+    let root_id = 1;
+    let root_node = crate::btree::node::BTreeNode::new_leaf(root_id);
+
+    // Write the root node to disk
+    let bytes = root_node.to_bytes().unwrap();
+    let mut page = Page::new(root_id);
+    page.used_space = bytes.len() as u16;
+    page.data[..bytes.len()].copy_from_slice(&bytes);
+    pager.write_page(&page).unwrap();
+
+    // Create BTreeManager
+    let mut btree = crate::btree::manager::BTreeManager::new(&mut pager, root_id);
+
+    // Test insert
+    btree.insert("user_123".to_string(), 42).unwrap();
+
+    // Test search
+    let result = btree.search("user_123").unwrap();
+    assert_eq!(result, Some(42));
+
+    // Test search for non-existent key
+    let result = btree.search("user_999").unwrap();
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_btree_split_and_growth() {
+    let file = "test_btree.db";
+    let _ = std::fs::remove_file(file);
+
+    let key = generate_key();
+    let mut pager = Pager::open(file, key).unwrap();
+
+    // Initialize Tree (Root is Page 1, Page 0 is Primary Index)
+    let root_id = pager.allocate_page();
+    let root = crate::btree::node::BTreeNode::new_leaf(root_id);
+
+    // Manually write root to start
+    let bytes = root.to_bytes().unwrap();
+    let mut page = Page::new(root_id);
+    page.used_space = bytes.len() as u16;
+    page.data[..bytes.len()].copy_from_slice(&bytes);
+    pager.write_page(&page).unwrap();
+
+    let mut btree = crate::btree::manager::BTreeManager::new(&mut pager, root_id);
+
+    // INSERT 60 ITEMS (Capacity is 50, so this FORCES a split)
+    for i in 0..60 {
+        let key = format!("user_{:03}", i); // user_000, user_001...
+        btree.insert(key, i + 100).expect("Insert failed");
+    }
+
+    // Verify Search works on both sides of the split
+    let res1 = btree.search("user_005").unwrap(); // Left side
+    let res2 = btree.search("user_055").unwrap(); // Right side
+
+    assert_eq!(res1, Some(105));
+    assert_eq!(res2, Some(155));
+
+    println!("✅ B-Tree Successfully Split and Rebalanced!");
+}

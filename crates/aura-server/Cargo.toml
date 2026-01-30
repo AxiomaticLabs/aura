@@ -2,6 +2,9 @@
 name = "aura-server"
 version = "0.1.0"
 edition = "2021"
+authors = ["AuraDB Team <team@auradb.com>"]
+license = "MIT OR Apache-2.0"
+description = "Post-quantum secure database server with homomorphic encryption"
 
 [[bin]]
 name = "aura-server"
@@ -23,3 +26,23 @@ bytes = "1.5"
 dashmap = "5.5" # Thread-safe HashMap for sessions
 uuid = { version = "1.7", features = ["v4"] }
 pqcrypto-traits = "0.3"
+
+[package.metadata.deb]
+maintainer = "AuraDB Team <team@auradb.com>"
+copyright = "2026, AuraDB Inc."
+license-file = ["../../LICENSE"]
+depends = "$auto"
+section = "database"
+priority = "optional"
+extended-description = "Post-quantum secure database with homomorphic encryption"
+# Install binaries to /usr/bin (fixes PATH automatically)
+assets = [
+    ["target/release/aura-server", "usr/bin/", "755"],
+]
+# Install systemd service
+systemd-units = [
+    { unit-name = "aura-server", unit-scripts = "../../distribution/systemd", enable = true, start = true },
+]
+
+[package.metadata.wix]
+eula = false
