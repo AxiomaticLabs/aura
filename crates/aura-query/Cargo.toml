@@ -3,6 +3,12 @@ name = "aura-query"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+aura-common = { path = "../aura-common" }
+aura-store = { path = "../aura-store" }
+aura-security = { path = "../aura-security" }
+
+sqlparser = "0.43"  # The industry standard SQL parser for Rust
+uuid = { version = "1.0", features = ["v4"] }  # For auto-generating IDs
+thiserror = { workspace = true }
+anyhow = { workspace = true }
