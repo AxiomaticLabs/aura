@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use aura_common::document::{AuraDocument, DataValue};
     use aura_security::symmetric;
