@@ -138,13 +138,12 @@ impl<'a> BTreeManager<'a> {
     fn write_node(&mut self, node: &BTreeNode) -> Result<(), StoreError> {
         let bytes = node
             .to_bytes()
-            .map_err(|_| StoreError::Io(Error::new(std::io::ErrorKind::Other, "Serialize Fail")))?;
+            .map_err(|_| StoreError::Io(std::io::Error::other("Serialize Fail")))?;
 
         let mut page = Page::new(node.id);
 
         if bytes.len() > crate::page::DATA_SIZE {
-            return Err(StoreError::Io(Error::new(
-                std::io::ErrorKind::Other,
+            return Err(StoreError::Io(std::io::Error::other(
                 "Node too big for Page",
             )));
         }

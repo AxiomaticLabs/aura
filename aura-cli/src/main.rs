@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn test_cli_parsing() {
         // Test basic CLI argument parsing
-        let args = vec!["aura-cli", "--host", "127.0.0.1", "--port", "7654"];
+        let args = ["aura-cli", "--host", "127.0.0.1", "--port", "7654"];
         // Note: This would require clap to parse, but for now just test the concept
         assert_eq!(args.len(), 5);
         assert_eq!(args[0], "aura-cli");
@@ -231,7 +231,7 @@ mod tests {
             DataValue::Text("hello".to_string()),
             DataValue::Integer(42),
             DataValue::Boolean(true),
-            DataValue::Float(3.14),
+            DataValue::Float(std::f64::consts::PI),
         ];
 
         for value in values {

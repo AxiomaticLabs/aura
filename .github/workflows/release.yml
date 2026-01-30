@@ -1,0 +1,143 @@
+name: 🚀 Publish Release
+
+# Trigger ONLY when we push a version tag
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  # Force non-interactive modes for installers
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  # -----------------------------------------------------------------
+  # JOB 1: LINUX (.deb Package)
+  # -----------------------------------------------------------------
+  package-linux:
+    name: Package Linux (Debian/Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev pkg-config cmake
+
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+
+      - name: Build & Package (.deb)
+        run: cargo deb -p aura-server --no-build # We let cargo deb handle the build
+
+      # Rename for clarity (e.g., aura-server_0.1.0_amd64.deb -> aura-db-linux-amd64.deb)
+      - name: Rename Artifact
+        run: mv target/debian/*.deb target/debian/aura-db-linux-amd64.deb
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: target/debian/aura-db-linux-amd64.deb
+
+  # -----------------------------------------------------------------
+  # JOB 2: WINDOWS (.msi Installer)
+  # -----------------------------------------------------------------
+  package-windows:
+    name: Package Windows (MSI)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: choco install cmake nasm strawberryperl
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-wix
+        run: cargo install cargo-wix
+
+      - name: Initialize WiX (If not already committed)
+        # Only needed if you haven't committed wix/main.wxs yet.
+        # If you have, this step can be skipped or will warn it exists.
+        run: cargo wix init || echo "WiX already initialized"
+        continue-on-error: true
+
+      - name: Build & Package (.msi)
+        # This builds Release and wraps it in MSI
+        run: cargo wix --nocapture -p aura-server 
+
+      - name: Rename Artifact
+        run: |
+          cd target/wix
+          Get-ChildItem *.msi | Rename-Item -NewName "aura-db-windows-x64.msi"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msi
+          path: target/wix/aura-db-windows-x64.msi
+
+  # -----------------------------------------------------------------
+  # JOB 3: MACOS (Tarball)
+  # -----------------------------------------------------------------
+  package-macos:
+    name: Package macOS (Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: brew install openssl@3 cmake
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Release
+        run: cargo build --release --workspace
+
+      - name: Create Tarball
+        run: |
+          mkdir -p aura-dist/bin
+          cp target/release/aura-server aura-dist/bin/
+          cp target/release/aura aura-dist/bin/
+          cp README.md aura-dist/
+          # Create a nice tar.gz
+          tar -czf aura-db-macos-arm64.tar.gz -C aura-dist .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-tar
+          path: aura-db-macos-arm64.tar.gz
+
+  # -----------------------------------------------------------------
+  # JOB 4: PUBLISH TO GITHUB RELEASES
+  # -----------------------------------------------------------------
+  publish:
+    name: Publish Release
+    needs: [package-linux, package-windows, package-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display Artifacts
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            artifacts/linux-deb/aura-db-linux-amd64.deb
+            artifacts/windows-msi/aura-db-windows-x64.msi
+            artifacts/macos-tar/aura-db-macos-arm64.tar.gz
+          generate_release_notes: true

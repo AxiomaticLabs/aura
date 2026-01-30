@@ -106,7 +106,10 @@ mod tests {
         assert_eq!(DataValue::Null, DataValue::Null);
         assert_eq!(DataValue::Boolean(true), DataValue::Boolean(true));
         assert_eq!(DataValue::Integer(42), DataValue::Integer(42));
-        assert_eq!(DataValue::Float(3.14), DataValue::Float(3.14));
+        assert_eq!(
+            DataValue::Float(std::f64::consts::PI),
+            DataValue::Float(std::f64::consts::PI)
+        );
         assert_eq!(
             DataValue::Text("hello".to_string()),
             DataValue::Text("hello".to_string())
@@ -171,9 +174,10 @@ mod tests {
         full_doc
             .data
             .insert("int_val".to_string(), DataValue::Integer(-123));
-        full_doc
-            .data
-            .insert("float_val".to_string(), DataValue::Float(-3.14159));
+        full_doc.data.insert(
+            "float_val".to_string(),
+            DataValue::Float(-std::f64::consts::PI),
+        );
         full_doc
             .data
             .insert("text_val".to_string(), DataValue::Text("".to_string())); // Empty string

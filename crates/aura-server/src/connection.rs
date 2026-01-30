@@ -80,7 +80,7 @@ pub async fn handle_socket(mut socket: TcpStream, db: Arc<Mutex<Pager>>) -> Resu
                 let response = {
                     // Lock the DB, Execute, Unlock immediately
                     let mut engine_lock = db.lock().await;
-                    let mut query_engine = QueryEngine::new(&mut *engine_lock);
+                    let mut query_engine = QueryEngine::new(&mut engine_lock);
 
                     match query_engine.execute(&request_str) {
                         Ok(res) => format!("OK: {}", res),

@@ -154,7 +154,7 @@ fn test_kem_encapsulate_decapsulate() {
     let keypair = crate::kem::PQCKeyPair::generate();
     let pk_bytes = keypair.pk.as_bytes();
 
-    let (shared_secret1, ciphertext) = crate::kem::encapsulate(&pk_bytes).unwrap();
+    let (shared_secret1, ciphertext) = crate::kem::encapsulate(pk_bytes).unwrap();
     let shared_secret2 = crate::kem::decapsulate(&ciphertext, &keypair.sk).unwrap();
 
     assert_eq!(shared_secret1, shared_secret2);
