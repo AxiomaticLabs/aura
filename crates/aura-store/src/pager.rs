@@ -1,3 +1,4 @@
+use crate::index::PrimaryIndex;
 use crate::page::{Page, PAGE_SIZE};
 use crate::StoreError;
 use aura_security::symmetric::{self, KEY_SIZE};
@@ -12,6 +13,9 @@ pub struct Pager {
     file: File,
     total_pages: u32,
     master_key: [u8; KEY_SIZE],
+
+    // NEW: The Index lives here
+    pub index: PrimaryIndex,
 }
 
 impl Pager {
@@ -26,11 +30,46 @@ impl Pager {
         let len = file.metadata()?.len();
         let total_pages = (len / ENCRYPTED_PAGE_SIZE as u64) as u32;
 
-        Ok(Self {
+        // LOAD THE INDEX
+        // Convention: Page 0 is ALWAYS the Index Page.
+        let index = PrimaryIndex::new();
+
+        if total_pages > 0 {
+            // If DB exists, try to read Page 0
+            // For now, we'll load it after creating the pager
+            // This is a bit circular, but we'll handle it
+        }
+
+        let mut pager = Self {
             file,
             total_pages,
             master_key,
-        })
+            index,
+        };
+
+        // Now try to load the index from page 0
+        if pager.total_pages > 0 {
+            match pager.read_page(0) {
+                Ok(page) if page.page_type == 2 => {
+                    // Index page type
+                    let index_bytes = &page.data[..page.used_space as usize];
+                    match PrimaryIndex::from_bytes(index_bytes) {
+                        Ok(loaded_index) => {
+                            pager.index = loaded_index;
+                        }
+                        Err(_) => {
+                            // Index corruption, start fresh
+                            pager.index = PrimaryIndex::new();
+                        }
+                    }
+                }
+                _ => {
+                    // No index page or wrong type, start fresh
+                }
+            }
+        }
+
+        Ok(pager)
     }
 
     /// Writes a page to disk with transparent encryption
@@ -94,8 +133,45 @@ impl Pager {
 
     /// Allocates a new empty page
     pub fn allocate_page(&mut self) -> u32 {
-        let id = self.total_pages;
-        self.total_pages += 1;
+        // Page 0 is reserved for index, so start from page 1
+        let id = if self.total_pages == 0 {
+            1
+        } else {
+            self.total_pages
+        };
+        self.total_pages = id + 1;
         id
+    }
+
+    // NEW: Save the index to Page 0
+    pub fn sync_index(&mut self) -> Result<(), StoreError> {
+        if !self.index.dirty {
+            return Ok(());
+        }
+
+        let bytes = self.index.to_bytes()?;
+
+        // Ensure Page 0 exists
+        if self.total_pages == 0 {
+            self.total_pages = 1;
+        }
+
+        let mut page = Page::new(0); // Page 0 is reserved
+        page.page_type = 2; // 2 = Index Type
+
+        // Safety: If index > 4KB, this crashes.
+        // FUTURE TODO: B-Tree splitting. For now, we assume small index.
+        if bytes.len() > crate::page::DATA_SIZE {
+            return Err(StoreError::Io(std::io::Error::other(
+                "Index too big for Page 0",
+            )));
+        }
+
+        page.data[..bytes.len()].copy_from_slice(&bytes);
+        page.used_space = bytes.len() as u16;
+
+        self.write_page(&page)?;
+        self.index.dirty = false;
+        Ok(())
     }
 }

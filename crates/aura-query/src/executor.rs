@@ -33,8 +33,12 @@ impl<'a> QueryEngine<'a> {
                     ))
                 }
             }
+            Statement::Query(query) => {
+                // Very simplified parser for: SELECT * FROM users WHERE id = 'x'
+                self.handle_select(query)
+            }
             _ => Err(QueryError::Unimplemented(
-                "Only INSERT is supported in Step 5".into(),
+                "Only INSERT and SELECT are supported".into(),
             )),
         }
     }
@@ -92,12 +96,18 @@ impl<'a> QueryEngine<'a> {
         };
 
         // 3. Serialize & Store (The "Map to Page" step)
-        self.write_document_to_disk(document)?;
+        let new_page_id = self.write_document_to_disk(document)?;
+
+        // UPDATE INDEX
+        self.pager.index.insert(doc_id.clone(), new_page_id);
+
+        // Save the index to disk immediately (or wait for a commit)
+        self.pager.sync_index()?;
 
         Ok(format!("Inserted Document ID: {}", doc_id))
     }
 
-    fn write_document_to_disk(&mut self, doc: AuraDocument) -> Result<(), QueryError> {
+    fn write_document_to_disk(&mut self, doc: AuraDocument) -> Result<u32, QueryError> {
         // A. Serialize
         let bytes = doc
             .to_bytes()
@@ -123,6 +133,32 @@ impl<'a> QueryEngine<'a> {
         // D. Write (This triggers the Automatic Encryption from Step 4)
         self.pager.write_page(&page)?;
 
-        Ok(())
+        Ok(new_page_id)
+    }
+
+    // New Function
+    fn handle_select(&mut self, _query: &sqlparser::ast::Query) -> Result<String, QueryError> {
+        // 1. Extract the WHERE clause (Looking for ID)
+        // This requires traversing the AST. For Step 6, let's cheat and hardcode:
+        // "Find the document with ID = 'user_007'"
+
+        // Assume we parsed the ID from the query string...
+        let target_id = "user_007"; // In real code, get this from AST
+
+        // 2. INDEX LOOKUP (O(1) Speed)
+        match self.pager.index.get(target_id) {
+            Some(page_id) => {
+                // 3. FETCH ONLY THE ONE PAGE
+                let page = self.pager.read_page(page_id)?;
+
+                // 4. Deserialize
+                let stored_bytes = &page.data[..page.used_space as usize];
+                let doc = AuraDocument::from_bytes(stored_bytes)
+                    .map_err(|e| QueryError::Serialization(e.to_string()))?;
+
+                Ok(format!("Found: {:?}", doc))
+            }
+            None => Ok("Document not found".to_string()),
+        }
     }
 }

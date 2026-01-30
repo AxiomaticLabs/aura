@@ -3,6 +3,23 @@ name = "aura-server"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
+[[bin]]
+name = "aura-server"
+path = "src/main.rs"
 
 [dependencies]
+# Internal Crates
+aura-common = { path = "../aura-common" }
+aura-security = { path = "../aura-security" }
+aura-store = { path = "../aura-store" }
+aura-query = { path = "../aura-query" }
+
+# System
+tokio = { version = "1.36", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+anyhow = "1.0"
+bytes = "1.5"
+dashmap = "5.5" # Thread-safe HashMap for sessions
+uuid = { version = "1.7", features = ["v4"] }
+pqcrypto-traits = "0.3"

@@ -11,6 +11,8 @@ memmap2 = "0.9"    # Direct memory mapping (Zero-copy reads)
 blake3 = "1.5"     # Fast cryptographic hashing
 thiserror = { workspace = true }
 bytemuck = "1.14"  # For safely casting bytes to structs
+serde = { version = "1.0", features = ["derive"] }  # For serializing the index
+postcard = "1.0"   # Efficient binary serialization
 
 [dev-dependencies]
 tempfile = "3.8"   # For creating temporary test files

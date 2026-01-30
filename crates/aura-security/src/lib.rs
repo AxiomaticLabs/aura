@@ -5,6 +5,9 @@ pub mod symmetric;
 #[cfg(test)]
 pub mod tests;
 
+// Re-export KEM functions for convenience
+pub use kem::{decapsulate, encapsulate, PQCKeyPair};
+
 // Re-export common errors
 use thiserror::Error;
 
