@@ -8,8 +8,7 @@ fn test_kyber_handshake() {
     let server_keys = crate::kem::PQCKeyPair::generate();
 
     // 2. Client uses Server's Public Key to create a secret
-    let (client_secret, ciphertext) =
-        crate::kem::encapsulate(server_keys.pk.as_bytes()).unwrap();
+    let (client_secret, ciphertext) = crate::kem::encapsulate(server_keys.pk.as_bytes()).unwrap();
 
     // 3. Server receives Ciphertext and recovers the secret
     let server_secret = crate::kem::decapsulate(&ciphertext, &server_keys.sk).unwrap();
