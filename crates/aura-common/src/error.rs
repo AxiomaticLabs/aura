@@ -10,7 +10,7 @@ pub enum AuraError {
 
     #[error("Crypto Error: {0}")]
     Crypto(String),
-    
+
     #[error("Key not found: {0}")]
     NotFound(String),
 }

@@ -1,6 +1,6 @@
+pub mod homomorphic;
 pub mod kem;
 pub mod sign;
-pub mod homomorphic;
 pub mod symmetric;
 pub mod tests;
 

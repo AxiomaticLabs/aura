@@ -1,10 +1,10 @@
-use tfhe::prelude::*;
-use tfhe::{ConfigBuilder, ServerKey, ClientKey, FheUint32};
 use crate::CryptoError;
+use tfhe::prelude::*;
+use tfhe::{ClientKey, ConfigBuilder, FheUint32, ServerKey};
 
 pub struct FheContext {
     pub client_key: ClientKey, // Held ONLY by the Client
-    server_key: ServerKey, // Held by the Database Engine
+    server_key: ServerKey,     // Held by the Database Engine
 }
 
 impl FheContext {
@@ -12,7 +12,10 @@ impl FheContext {
         let config = ConfigBuilder::default().build();
         let client_key = ClientKey::generate(config);
         let server_key = ServerKey::new(&client_key);
-        Self { client_key, server_key }
+        Self {
+            client_key,
+            server_key,
+        }
     }
 
     pub fn get_server_key(&self) -> ServerKey {
@@ -33,8 +36,10 @@ impl FheComputer {
     /// Adds two encrypted integers without decrypting them
     pub fn sum_encrypted(&self, a_bytes: &[u8], b_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
         // 1. Deserialize the encrypted blobs
-        let a: FheUint32 = bincode::deserialize(a_bytes).map_err(|_| CryptoError::DecryptionFailed)?;
-        let b: FheUint32 = bincode::deserialize(b_bytes).map_err(|_| CryptoError::DecryptionFailed)?;
+        let a: FheUint32 =
+            bincode::deserialize(a_bytes).map_err(|_| CryptoError::DecryptionFailed)?;
+        let b: FheUint32 =
+            bincode::deserialize(b_bytes).map_err(|_| CryptoError::DecryptionFailed)?;
 
         // 2. Perform the Math (CPU Intensive!)
         // Notice: We define the server_key context to perform the operation

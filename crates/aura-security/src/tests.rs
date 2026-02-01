@@ -2,8 +2,8 @@
 mod tests {
     use super::*;
     use crate::homomorphic::FheContext;
-    use tfhe::prelude::*;
     use pqcrypto_traits::kem::PublicKey;
+    use tfhe::prelude::*;
 
     #[test]
     fn test_kyber_handshake() {
@@ -11,21 +11,25 @@ mod tests {
         let server_keys = crate::kem::PQCKeyPair::generate();
 
         // 2. Client uses Server's Public Key to create a secret
-        let (client_secret, ciphertext) = crate::kem::encapsulate(server_keys.pk.as_bytes()).unwrap();
+        let (client_secret, ciphertext) =
+            crate::kem::encapsulate(server_keys.pk.as_bytes()).unwrap();
 
         // 3. Server receives Ciphertext and recovers the secret
         let server_secret = crate::kem::decapsulate(&ciphertext, &server_keys.sk).unwrap();
 
         // 4. They must match exactly
         assert_eq!(client_secret, server_secret);
-        println!("✅ Kyber-1024 Handshake Successful. Shared Secret Size: {} bytes", client_secret.len());
+        println!(
+            "✅ Kyber-1024 Handshake Successful. Shared Secret Size: {} bytes",
+            client_secret.len()
+        );
     }
 
     #[test]
     fn test_homomorphic_addition() {
         println!("⏳ Generating FHE Keys (This takes a moment)...");
         let ctx = FheContext::new();
-        
+
         // 1. Client Encrypts "10" and "20"
         let clear_a = 10u32;
         let clear_b = 20u32;
