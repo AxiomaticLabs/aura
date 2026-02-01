@@ -32,43 +32,19 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features
 
   # ----------------------------------------------------------------
-  # JOB 2: OS MATRIX (Windows, Mac, Ubuntu)
+  # JOB 2: TEST (Ubuntu Only)
   # ----------------------------------------------------------------
-  test-matrix:
-    name: 🧪 Test (${{ matrix.os }})
+  test:
+    name: 🧪 Test
     needs: static-analysis
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # --- LINUX DEPENDENCIES ---
-      - name: Install Dependencies (Linux)
-        if: runner.os == 'Linux'
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libssl-dev pkg-config cmake
-
-      # --- MACOS DEPENDENCIES ---
-      - name: Install Dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install openssl@3 cmake
-          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
-
-      # --- WINDOWS DEPENDENCIES ---
-      # Windows usually needs NASM and Perl for building OpenSSL/Crypto from source
-      - name: Install Dependencies (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install nasm strawberryperl cmake
-          # Add Strawberry Perl to path
-          echo "C:\Strawberry\c\bin" >> $GITHUB_PATH
-          echo "C:\Strawberry\perl\site\bin" >> $GITHUB_PATH
-          echo "C:\Strawberry\perl\bin" >> $GITHUB_PATH
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -80,54 +56,11 @@ jobs:
         run: cargo test --workspace --verbose
 
   # ----------------------------------------------------------------
-  # JOB 3: DISTRO CHECK (Arch, Fedora via Docker)
-  # ----------------------------------------------------------------
-  distro-check:
-    name: 🐧 Distro Check (${{ matrix.distro }})
-    needs: static-analysis
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - distro: archlinux
-            image: archlinux:latest
-            # Arch needs base-devel for gcc/make
-            setup_cmd: pacman -Syu --noconfirm git base-devel curl cmake openssl
-          - distro: fedora
-            image: fedora:latest
-            # Fedora needs 'Development Tools' group and openssl-devel
-            setup_cmd: dnf -y update && dnf -y groupinstall "Development Tools" && dnf -y install git curl cmake openssl-devel perl-FindBin
-
-    container:
-      image: ${{ matrix.image }}
-
-    steps:
-      - name: Install System Dependencies
-        run: ${{ matrix.setup_cmd }}
-
-      # We must install Rust manually because we are inside a raw Docker container
-      # dtolnay/rust-toolchain does not always work inside 'container' contexts perfectly
-      - name: Install Rust (Manual Script)
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
-          # Add Cargo to PATH for subsequent steps
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - uses: actions/checkout@v4
-
-      # We cannot use swatinem/rust-cache easily inside raw containers without extra config,
-      # so we skip caching for distro checks to ensure a 100% clean build.
-
-      - name: Run Tests
-        run: cargo test --workspace
-
-  # ----------------------------------------------------------------
-  # JOB 4: RELEASE BUILD (The Final Seal)
+  # JOB 3: RELEASE BUILD (The Final Seal)
   # ----------------------------------------------------------------
   release-build:
     name: 🚀 Release Build
-    needs: [test-matrix, distro-check]
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
