@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aura-common",
+    "crates/aura-security",
+    "crates/aura-store",
+    "crates/aura-query",
+    "crates/aura-server",
+    "aura-cli"
+]
+
+[workspace.dependencies]
+# --- Internal Crates ---
+aura-common = { path = "crates/aura-common" }
+aura-security = { path = "crates/aura-security" }
+aura-store = { path = "crates/aura-store" }
+aura-query = { path = "crates/aura-query" }
+
+# --- System & Async ---
+tokio = { version = "1.36", features = ["full"] }
+anyhow = "1.0"
+thiserror = "2.0.18"
+tracing = "0.1"
+
+# --- Serialization (The Hybrid Core) ---
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Postcard is a #![no_std] focused binary serializer (Faster/Smaller than BSON)
+postcard = { version = "1.0", features = ["alloc"] } 
+bytes = "1.5"
+
+# --- Crypto (Pinned Versions) ---
+# We will enable these as we implement them in Step 2
+rand = "0.8"
+sha3 = "0.10"
+# oqs = "0.10" 
+# tfhe = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true

@@ -1,0 +1,25 @@
+[package]
+name = "aura-security"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# --- Post-Quantum Key Encapsulation (Kyber-1024) ---
+# We use the 'pqcrypto' family which auto-builds the C reference code.
+pqcrypto-kyber = "0.8"
+pqcrypto-traits = "0.3"
+
+# --- Post-Quantum Signatures (Dilithium-5) ---
+pqcrypto-dilithium = "0.5"
+
+# --- Homomorphic Encryption (The Magic) ---
+# 'integer' feature allows us to do math on encrypted numbers
+tfhe = { version = "0.5", features = ["boolean", "integer", "x86_64-unix"] }
+
+# --- Symmetric Encryption (The Speed) ---
+chacha20poly1305 = "0.10" # Authenticated Encryption (AEAD)
+rand = "0.8"
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+zeroize = "1.7" # Wipes memory when dropped (Crucial for keys)
+bincode = "1.3"
