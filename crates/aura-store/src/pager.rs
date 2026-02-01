@@ -1,8 +1,8 @@
+use crate::page::{Page, PAGE_SIZE};
+use crate::StoreError;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
-use crate::page::{Page, PAGE_SIZE};
-use crate::StoreError;
 
 pub struct Pager {
     file: File,
@@ -27,11 +27,12 @@ impl Pager {
     pub fn write_page(&mut self, page: &Page) -> Result<(), StoreError> {
         let offset = page.id as u64 * PAGE_SIZE as u64;
         self.file.seek(SeekFrom::Start(offset))?;
-        
+
         // Convert struct to raw bytes safely
-        let bytes = unsafe { std::slice::from_raw_parts(page as *const Page as *const u8, PAGE_SIZE) };
+        let bytes =
+            unsafe { std::slice::from_raw_parts(page as *const Page as *const u8, PAGE_SIZE) };
         self.file.write_all(bytes)?;
-        
+
         Ok(())
     }
 
@@ -45,7 +46,8 @@ impl Pager {
         self.file.seek(SeekFrom::Start(offset))?;
 
         let mut page = Page::new(id);
-        let bytes = unsafe { std::slice::from_raw_parts_mut(&mut page as *mut Page as *mut u8, PAGE_SIZE) };
+        let bytes =
+            unsafe { std::slice::from_raw_parts_mut(&mut page as *mut Page as *mut u8, PAGE_SIZE) };
         self.file.read_exact(bytes)?;
 
         Ok(page)

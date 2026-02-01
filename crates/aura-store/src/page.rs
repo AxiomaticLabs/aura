@@ -9,8 +9,8 @@ pub struct Page {
     pub id: u32,
     pub page_type: u8, // 1 = Data, 2 = Index
     pub used_space: u16,
-    pub next_page: u32, // For linked lists of pages
-    pub reserved: [u8; 88], // Padding to align headers
+    pub next_page: u32,        // For linked lists of pages
+    pub reserved: [u8; 88],    // Padding to align headers
     pub data: [u8; DATA_SIZE], // The actual payload
 }
 
