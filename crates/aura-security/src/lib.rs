@@ -2,6 +2,7 @@ pub mod homomorphic;
 pub mod kem;
 pub mod sign;
 pub mod symmetric;
+#[cfg(test)]
 pub mod tests;
 
 // Re-export common errors

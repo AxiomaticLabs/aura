@@ -1,5 +1,4 @@
 use crate::CryptoError;
-use tfhe::prelude::*;
 use tfhe::{ClientKey, ConfigBuilder, FheUint32, ServerKey};
 
 pub struct FheContext {
@@ -20,6 +19,12 @@ impl FheContext {
 
     pub fn get_server_key(&self) -> ServerKey {
         self.server_key.clone()
+    }
+}
+
+impl Default for FheContext {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

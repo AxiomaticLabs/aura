@@ -1,6 +1,6 @@
 # AuraDB
 
-[![CI](https://github.com/amol/aura-db/workflows/CI/badge.svg)](https://github.com/amol/aura-db/actions)
+[![CI](https://github.com/AxiomaticLabs/aura/actions/workflows/ci.yml/badge.svg)](https://github.com/AxiomaticLabs/aura/actions/workflows/ci.yml)
 
 A next-generation database combining SQL and NoSQL capabilities with post-quantum cryptography and homomorphic encryption.
 

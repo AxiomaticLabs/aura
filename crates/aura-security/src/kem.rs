@@ -1,6 +1,6 @@
 use crate::CryptoError;
 use pqcrypto_kyber::kyber1024; // Highest security level
-use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
+use pqcrypto_traits::kem::{Ciphertext, PublicKey, SharedSecret};
 
 /// A wrapper for the User's Identity Keypair
 pub struct PQCKeyPair {
