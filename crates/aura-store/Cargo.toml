@@ -3,6 +3,11 @@ name = "aura-store"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+aura-common = { path = "../aura-common" }
+aura-security = { path = "../aura-security" }
+
+memmap2 = "0.9"    # Direct memory mapping (Zero-copy reads)
+blake3 = "1.5"     # Fast cryptographic hashing
+thiserror = { workspace = true }
+bytemuck = "1.14"  # For safely casting bytes to structs
