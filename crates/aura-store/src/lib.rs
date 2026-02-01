@@ -1,5 +1,6 @@
 pub mod page;
 pub mod pager;
+pub mod tests;
 
 use thiserror::Error;
 
