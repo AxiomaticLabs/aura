@@ -1,110 +1,142 @@
-name: CI
+name: AuraDB CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+  RUST_BACKTRACE: 1
 
 jobs:
+  # ----------------------------------------------------------------
+  # JOB 1: STATIC ANALYSIS (Linting)
+  # ----------------------------------------------------------------
   static-analysis:
-    name: Static Analysis
+    name: 🛡️ Quality Gate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: swatinem/rust-cache@v2
 
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
-
-      - name: Check formatting
+      - name: Check Formatting
         run: cargo fmt --all -- --check
 
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets --all-features
 
-  test:
-    name: Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  # ----------------------------------------------------------------
+  # JOB 2: OS MATRIX (Windows, Mac, Ubuntu)
+  # ----------------------------------------------------------------
+  test-matrix:
+    name: 🧪 Test (${{ matrix.os }})
     needs: static-analysis
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
+      # --- LINUX DEPENDENCIES ---
+      - name: Install Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev pkg-config cmake
+
+      # --- MACOS DEPENDENCIES ---
+      - name: Install Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openssl@3 cmake
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
+
+      # --- WINDOWS DEPENDENCIES ---
+      # Windows usually needs NASM and Perl for building OpenSSL/Crypto from source
+      - name: Install Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install nasm strawberryperl cmake
+          # Add Strawberry Perl to path
+          echo "C:\Strawberry\c\bin" >> $GITHUB_PATH
+          echo "C:\Strawberry\perl\site\bin" >> $GITHUB_PATH
+          echo "C:\Strawberry\perl\bin" >> $GITHUB_PATH
+
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust dependencies
+      - name: Cache Dependencies
         uses: swatinem/rust-cache@v2
 
-      - name: Run tests
-        run: cargo test --workspace
+      - name: Run Tests
+        run: cargo test --workspace --verbose
 
+  # ----------------------------------------------------------------
+  # JOB 3: DISTRO CHECK (Arch, Fedora via Docker)
+  # ----------------------------------------------------------------
   distro-check:
-    name: Distro Check (${{ matrix.distro }})
-    runs-on: ubuntu-latest
+    name: 🐧 Distro Check (${{ matrix.distro }})
     needs: static-analysis
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        distro: [archlinux, fedora]
         include:
           - distro: archlinux
-            container: archlinux:latest
+            image: archlinux:latest
+            # Arch needs base-devel for gcc/make
+            setup_cmd: pacman -Syu --noconfirm git base-devel curl cmake openssl
           - distro: fedora
-            container: fedora:latest
+            image: fedora:latest
+            # Fedora needs 'Development Tools' group and openssl-devel
+            setup_cmd: dnf -y update && dnf -y groupinstall "Development Tools" && dnf -y install git curl cmake openssl-devel perl-FindBin
+
     container:
-      image: ${{ matrix.container }}
+      image: ${{ matrix.image }}
+
     steps:
-      - name: Install Git (Required for Checkout)
-        if: matrix.distro == 'archlinux'
-        run: pacman -Syu --noconfirm git
+      - name: Install System Dependencies
+        run: ${{ matrix.setup_cmd }}
 
-      - name: Install Git (Fedora)
-        if: matrix.distro == 'fedora'
-        run: dnf update -y && dnf install -y git
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # --- FIXED: Install C Compilers & OpenSSL for Crypto ---
-      - name: Install Build Tools (Arch Linux)
-        if: matrix.distro == 'archlinux'
+      # We must install Rust manually because we are inside a raw Docker container
+      # dtolnay/rust-toolchain does not always work inside 'container' contexts perfectly
+      - name: Install Rust (Manual Script)
         run: |
-          pacman -S --noconfirm rustup base-devel cmake openssl
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+          # Add Cargo to PATH for subsequent steps
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Build Tools (Fedora)
-        if: matrix.distro == 'fedora'
-        run: |
-          dnf install -y rustup gcc gcc-c++ make cmake openssl-devel pkg-config
+      - uses: actions/checkout@v4
 
-      - name: Setup Rust
-        run: |
-          rustup set profile minimal
-          rustup default stable
+      # We cannot use swatinem/rust-cache easily inside raw containers without extra config,
+      # so we skip caching for distro checks to ensure a 100% clean build.
 
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
-
-      - name: Run tests
+      - name: Run Tests
         run: cargo test --workspace
 
+  # ----------------------------------------------------------------
+  # JOB 4: RELEASE BUILD (The Final Seal)
+  # ----------------------------------------------------------------
   release-build:
-    name: Release Build
+    name: 🚀 Release Build
+    needs: [test-matrix, distro-check]
     runs-on: ubuntu-latest
-    needs: [test, distro-check]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Install Deps
+        run: sudo apt-get install -y build-essential libssl-dev pkg-config cmake
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
 
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
-
-      - name: Build release
+      - name: Build Release
         run: cargo build --release --workspace
