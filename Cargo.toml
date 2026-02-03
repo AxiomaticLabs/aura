@@ -7,11 +7,12 @@ members = [
     "crates/aura-query",
     "crates/aura-server",
     "aura-cli"
-]
+, "crates/aura-consensus"]
 
 [workspace.dependencies]
 # --- Internal Crates ---
 aura-common = { path = "crates/aura-common" }
+aura-consensus = { path = "crates/aura-consensus" }
 aura-security = { path = "crates/aura-security" }
 aura-store = { path = "crates/aura-store" }
 aura-query = { path = "crates/aura-query" }

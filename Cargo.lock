@@ -135,6 +135,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aura-consensus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rand",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "aura-query"
 version = "0.1.0"
 dependencies = [
