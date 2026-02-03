@@ -1,0 +1,11 @@
+[package]
+name = "aura-consensus"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.36", features = ["full", "sync"] }
+serde = { version = "1.0", features = ["derive"] }
+rand = "0.8" # For randomized election timeouts
+tracing = "0.1"
+anyhow = "1.0"
